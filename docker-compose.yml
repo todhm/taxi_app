@@ -1,0 +1,55 @@
+version: '3.7'
+
+services:
+  redis:
+    container_name: redis
+    image: redis:4.0.11
+
+
+  taxi-server:
+    container_name: taxi-server
+    build:
+      context: ./django-taxi
+      dockerfile: Dockerfile
+    volumes:
+      - './django-taxi:/usr/src/app'
+    ports:
+      - 8000:8000
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    links:
+      - redis
+
+  taxi-client:
+    container_name: taxi-client
+    build:
+      context: ./taxi-ui
+      dockerfile: Dockerfile
+    volumes:
+      - './taxi-ui:/usr/src/app'
+      - '/usr/src/app/node_modules'
+    ports:
+      - 4200:4200
+    depends_on:
+      - taxi-server
+    links:
+      - taxi-server
+  
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    restart: always
+    ports:
+      - 8080:80
+    depends_on:
+      - taxi-client
+      - taxi-server
+    volumes:
+      - media:/usr/src/app/example_taxi/media
+    
+volumes:
+  media:
